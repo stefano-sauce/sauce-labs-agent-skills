@@ -4,8 +4,6 @@ This repository is intended to be an example structure that Sauce Labs customers
 
 The examples in this repo are focused on WebdriverIO, but they are designed to be easily tweaked and fine-tuned to meet each customer's specific test framework requirements.
 
-This example was created using Visual Studio Code and GitHub Copilot Pro. Because `SKILL.md` follows an Anthropic standard, the overall structure should be compatible with a wide range of agent setups.
-
 ## References Folder
 
 The `reference/` folder contains supporting documentation used by the agent:
@@ -16,3 +14,10 @@ The `reference/` folder contains supporting documentation used by the agent:
 ## Prompts Folder
 
 The `prompts/` folder contains detailed prompts designed to make the generation and recreation of automated tests repeatable and consistent. Using these prompts ensures the agent produces reliable, predictable results each time it is asked to write or regenerate test scripts.
+
+## Tools
+
+So far I have tested this with the following setups:
+
+- ✅ Microsoft Visual Studio Code + GitHub Copilot Pro
+- ✅ Google Antigravity + Gemini 3.1 Pro
