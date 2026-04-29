@@ -7,43 +7,34 @@ description: Sauce Labs Real Device Cloud (RDC) Skill. Use when asked to configu
 
 ## Sauce Labs Config
 When generating or modifying configs:
-- Always include services: ['saucelabs']
 - Always use a broad appium:deviceName pattern (e.g., iPhone.*, Google.*,)
 - Always include a build name
 - Always target cloud execution
 
-### Example Sauce Labs RDC Android Capabilities
-```javascript
-export const config = {
-    capabilities: [{
-        platformName: 'Android',
-        'appium:app': 'storage:filename=app_name.apk',
-        'appium:deviceName': 'Google.*',
-        'appium:automationName': 'UIAutomator2',
-        'sauce:options': {
-            resigningEnabled: true,
-            appiumVersion: 'latest',
-            build: 'Android Regression Suite',
-        },
-    }],
-};
+### Example Sauce Labs RDC Android W3C Capabilities
+```
+platformName: 'Android',
+'appium:app': 'storage:filename=app_name.apk',
+'appium:deviceName': 'Google.*',
+'appium:automationName': 'UIAutomator2',
+'sauce:options': {
+    resigningEnabled: true,
+    appiumVersion: 'latest',
+    build: 'Include Relevant Build Name',
+    },
 ```
 
-### Example Sauce Labs RDC iOS Capabilities
-```javascript
-export const config = {
-    capabilities: [{
-        platformName: 'iOS',
-        'appium:app': 'storage:filename=<app_name>',
-        'appium:deviceName': 'iPhone.*',
-        'appium:automationName': 'XCUITest',
-        'sauce:options': {
-            resigningEnabled: true,
-            appiumVersion: 'latest',
-            build: 'iOS Regression Suite',
-        },
-    }],
-};
+### Example Sauce Labs RDC iOS W3C Capabilities
+```
+platformName: 'iOS',
+'appium:app': 'storage:filename=<app_name>',
+'appium:deviceName': 'iPhone.*',
+'appium:automationName': 'XCUITest',
+'sauce:options': {
+    resigningEnabled: true,
+    appiumVersion: 'latest',
+    build: 'Include Relevant Build Name',
+    },
 ```
 
 ## Sauce Labs RDC Advanced Functionality
