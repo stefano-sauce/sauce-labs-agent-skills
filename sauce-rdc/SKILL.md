@@ -59,7 +59,7 @@ driver.execute('sauce:biometrics-authenticate=false');
 
 ### Bypass Screenshot Restriction - Android Only
 Bypasses the restriction on taking screenshots for secure screens.
-- Use capability `bypassScreenshotRestriction: true` to enable crash reporting.
+- Use capability `bypassScreenshotRestriction: true` to enable bypass screenshot prediction.
 
 ### Crash Reporting
 Enables capturing and inclusion of detailed stack traces in the test results.
