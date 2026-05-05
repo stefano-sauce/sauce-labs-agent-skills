@@ -48,14 +48,11 @@ The default value is false.
 ### Biometric Authentication
 - Use capability `biometricsInterception: true` to enable biometric interception.
 - For iOS include `allowTouchIdEnroll: true` to allow Touch ID enrollment.
-- To simulate a passing biometric authentication scenario use:
-```javascript
+- To simulate a passing biometric authentication scenario use appium command:
 driver.execute('sauce:biometrics-authenticate=true');
-```
-- To simulate a failing biometric authentication scenario use:
-```javascript
+
+- To simulate a failing biometric authentication scenario use appium command:
 driver.execute('sauce:biometrics-authenticate=false');
-```
 
 ### Bypass Screenshot Restriction - Android Only
 Bypasses the restriction on taking screenshots for secure screens.
@@ -84,14 +81,11 @@ Enables recording of HTTP/HTTPS network traffic for debugging purposes. The defa
 ### Network Profile
 Set a network profile with predefined network conditions at the beginning of the session.
 - Use capability `networkProfile: <profile_name>` to set the desired network profile.
-- Network profiles can be applied dynamically during a session by executing the following command:
-```javascript
+- Network profiles can be applied dynamically during a session by executing the following appium command:
 driver.execute('"sauce: network-profile"="<profile_name>"');
-```
+
 - Use the following to disable the feature dynamically during a session by executing the following command:
-```javascript
 driver.execute('"sauce: network-profile"="no-throttling"');
-```
 
 Available network profiles:
 | Network Profile | ID | Download Speed (kbps) | Upload Speed (kbps) | Latency (ms) | Packet Loss (%) |
