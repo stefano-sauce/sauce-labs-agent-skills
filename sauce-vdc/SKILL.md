@@ -171,5 +171,4 @@ sauce:options:
 - Need WebDriver BiDi endpoint: set `webSocketUrl: true` and disable `extendedDebugging`.
 - Need Chrome DevTools Protocol: set `devTools: true` and disable `extendedDebugging`.
 - Need Sauce performance capture: set both `extendedDebugging: true` and `capturePerformance: true`.
-- Need advanced RDC features: turn on `resigningEnabled: true`.
 - Need secure logs: use `logFilters` and `filterSendKeys`.
