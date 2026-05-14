@@ -1,108 +1,103 @@
 ---
 name: sauce-rdc
-description: Sauce Labs Real Device Cloud (RDC) Skill. Use when asked to configure or interact with Sauce Labs RDC for mobile testing.
+description: Generate and validate Sauce Labs Real Device Cloud (RDC) Appium capabilities for Android and iOS real-device sessions.
+when_to_use: Use when the user asks to create, update, troubleshoot, or review Sauce Labs capabilities for real mobile devices, including RDC-specific features such as biometrics, network throttling, vitals, and media capture.
 ---
 
-# Sauce Labs Real Device Cloud (RDC) Skill
+# Sauce Labs Real Device Cloud (RDC)
 
-## Sauce Labs Config
-When generating or modifying configs:
-- Always use a broad appium:deviceName pattern (e.g., iPhone.*, Google.*,)
-- Always include a build name
-- Always target cloud execution
+## Scope
+Apply this skill only to Sauce Labs real mobile devices (RDC).
 
-### Example Sauce Labs RDC Android W3C Capabilities
+Do not include guidance that is desktop-only, emulator-only, or simulator-only.
+
+## Capability Authoring Rules
+When generating capabilities:
+- Use W3C-style keys (`platformName`, `appium:*`, `sauce:options`).
+- Always include `sauce:options`.
+- Always include a meaningful `sauce:options.build` value.
+- Set `sauce:options.resigningEnabled: true` for RDC advanced features.
+- Prefer dynamic real-device allocation unless the user requests a fixed device:
+  - Android family pattern example: `appium:deviceName: Google.*`
+  - iOS family pattern example: `appium:deviceName: iPhone.*`
+- Use Sauce storage references for app binaries unless the user provides another source.
+
+## Canonical RDC Templates
+
+### Android Real Device App Session
+```yaml
+platformName: Android
+appium:app: storage:filename=<app_name>.apk
+appium:deviceName: Google.*
+appium:automationName: UIAutomator2
+sauce:options:
+  build: Relevant Build Name
+  name: Relevant Test Name
+  appiumVersion: latest
+  resigningEnabled: true
 ```
-platformName: 'Android',
-'appium:app': 'storage:filename=app_name.apk',
-'appium:deviceName': 'Google.*',
-'appium:automationName': 'UIAutomator2',
-'sauce:options': {
-    resigningEnabled: true,
-    appiumVersion: 'latest',
-    build: 'Include Relevant Build Name',
-    },
+
+### iOS Real Device App Session
+```yaml
+platformName: iOS
+appium:app: storage:filename=<app_name>.ipa
+appium:deviceName: iPhone.*
+appium:automationName: XCUITest
+sauce:options:
+  build: Relevant Build Name
+  name: Relevant Test Name
+  appiumVersion: latest
+  resigningEnabled: true
 ```
 
-### Example Sauce Labs RDC iOS W3C Capabilities
-```
-platformName: 'iOS',
-'appium:app': 'storage:filename=<app_name>',
-'appium:deviceName': 'iPhone.*',
-'appium:automationName': 'XCUITest',
-'sauce:options': {
-    resigningEnabled: true,
-    appiumVersion: 'latest',
-    build: 'Include Relevant Build Name',
-    },
-```
+## RDC Advanced Feature Flags
+Enable only what the user asks for.
 
-## Sauce Labs RDC Advanced Functionality
-- Use `sauce:options` in capabilities for advanced features (e.g., video recording, custom build names).
-- Resigning must be set to true `resigningEnabled: true` for all advanced features to work.
+- `audioCapture: true`
+- `biometricsInterception: true`
+- `allowTouchIdEnroll: true` (iOS)
+- `bypassScreenshotRestriction: true` (Android)
+- `crashReporting: true`
+- `enableAnimations: true` (Android)
+- `groupFolderRedirectEnabled: true` (iOS app group behavior)
+- `imageInjection: true`
+- `networkCapture: true`
+- `networkProfile: <profile_id>`
+- `systemAlertsDelayEnabled: true` (iOS)
+- `vitals: true`
 
-### Audio Capture
-The default value is false.
-- Use capability `audioCapture: true` to enable audio capture.
+## Runtime Commands
 
-### Biometric Authentication
-- Use capability `biometricsInterception: true` to enable biometric interception.
-- For iOS include `allowTouchIdEnroll: true` to allow Touch ID enrollment.
-- To simulate a passing biometric authentication scenario use appium command:
+### Biometric Simulation
+```javascript
 driver.execute('sauce:biometrics-authenticate=true');
-
-- To simulate a failing biometric authentication scenario use appium command:
 driver.execute('sauce:biometrics-authenticate=false');
+```
 
-### Bypass Screenshot Restriction - Android Only
-Bypasses the restriction on taking screenshots for secure screens.
-- Use capability `bypassScreenshotRestriction: true` to enable bypass screenshot prediction.
+### Change Network Profile During Session
+```javascript
+driver.execute('sauce: network-profile=3G-fast');
+driver.execute('sauce: network-profile=no-throttling');
+```
 
-### Crash Reporting
-Enables capturing and inclusion of detailed stack traces in the test results.
-- Use capability `crashReporting: true` to enable crash reporting.
+## Supported Network Profile IDs
+- `no-throttling`
+- `no-network`
+- `2G-packet-loss`
+- `2G`
+- `3G-slow`
+- `3G-fast`
+- `4G-slow`
+- `4G-fast`
 
-### Enable Animations - Android Only
-Use this capability to enable animations for Android real devices by setting it to true. By default, animations are disabled.
-- Use capability `enableAnimations: true` to enable animations.
+## Validation Checklist
+Before returning capabilities, verify:
+- `platformName` is `Android` or `iOS`.
+- `appium:automationName` matches platform (`UIAutomator2` or `XCUITest`).
+- `appium:app` uses a valid source (prefer `storage:filename=...`).
+- `sauce:options.build` is present and meaningful.
+- `sauce:options` is present.
+- If advanced RDC features are used, `resigningEnabled: true` is present.
 
-### Group Folder Redirection
-Enables the use of the app's private app container directory instead of the shared app group container directory. For testing on the Real Device Cloud, the app gets resigned, which is why the shared directory is not accessible.
-- Use capability `groupFolderRedirectEnabled: true` to enable group folder redirection.
-
-### Image Injection
-Enables the camera image injection feature.
-- Use capability `imageInjection: true` to enable image injection.
-
-### Network Capture
-Enables recording of HTTP/HTTPS network traffic for debugging purposes. The default value is false.
-- Use capability `networkCapture: true` to enable network capture.
-
-### Network Profile
-Set a network profile with predefined network conditions at the beginning of the session.
-- Use capability `networkProfile: <profile_name>` to set the desired network profile.
-- Network profiles can be applied dynamically during a session by executing the following appium command:
-driver.execute('"sauce: network-profile"="<profile_name>"');
-
-- Use the following to disable the feature dynamically during a session by executing the following command:
-driver.execute('"sauce: network-profile"="no-throttling"');
-
-Available network profiles:
-| Network Profile | ID | Download Speed (kbps) | Upload Speed (kbps) | Latency (ms) | Packet Loss (%) |
-| --- | --- | --- | --- | --- | --- |
-| No Throttling | no-throttling | - | - | - | - |
-| No Network | no-network | 0 | 0 | 0 | 100 |
-| 2G Packet Loss | 2G-packet-loss | 100 | 50 | 500 | 10 |
-| 2G | 2G | 200 | 100 | 300 | 1 |
-| 3G Slow | 3G-slow | 500 | 250 | 200 | 1 |
-| 3G Fast | 3G-fast | 7000 | 2500 | 100 | - |
-| 4G Slow | 4G-slow | 8000 | 4000 | 100 | - |
-| 4G Fast | 4G-fast | 25000 | 15000 | 30 | - |
-
-### System Alerts Delay - iOS Only
-Delays system alerts, such as alerts asking for permission to access the camera, to prevent app crashes at startup.
-- Use capability `systemAlertsDelayEnabled: true` to enable system alerts delay .
-
-### Vitals
-Vitals enables memory, cpu, performance stats alongside UI interactions during the session.
-- Use capability `vitals: true` to enable vitals collection.
+## Output Preference
+When the user asks for capabilities, return compact YAML by default and add brief notes only for non-obvious options.
