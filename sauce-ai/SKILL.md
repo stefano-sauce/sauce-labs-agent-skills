@@ -61,7 +61,7 @@ The user's prompt includes one or more of:
 
 ## Environment Variables
 
-All Sauce Authoring API calls depend on three environment variables. Read them before doing anything else.
+All Sauce Authoring API calls depend on three environment variables. **Always resolve them before doing anything else.**
 
 | Variable | Required | Description |
 |---|---|---|
@@ -78,22 +78,66 @@ All Sauce Authoring API calls depend on three environment variables. Read them b
 
 Always derive the base URL from `$SAUCE_REGION`. Never hardcode a region.
 
+### How to resolve credentials
+
+Agent tools run in their own shell process — variables exported in a separate terminal are not visible to the agent. Use one of these methods so the agent can read them:
+
+**Option 1 — `.env` file in the project root (recommended)**
+
+Create a `.env` file at the repo root (it is gitignored):
+```
+SAUCE_USERNAME=your_username
+SAUCE_ACCESS_KEY=your_access_key
+SAUCE_REGION=eu-central-1
+```
+
+The agent will source this file during the pre-flight check below.
+
+**Option 2 — Agent tool environment settings**
+
+For Claude Code: add the variables under `env` in `.claude/settings.json`:
+```json
+{
+  "env": {
+    "SAUCE_USERNAME": "your_username",
+    "SAUCE_ACCESS_KEY": "your_access_key",
+    "SAUCE_REGION": "eu-central-1"
+  }
+}
+```
+
+For GitHub Copilot or other agents: set the variables in your IDE or agent tool's environment configuration before starting the session.
+
+**Option 3 — Shell profile**
+
+Add `export` statements to `~/.zshrc` or `~/.bashrc` and restart your terminal and IDE.
+
 ### Pre-flight check — run this before any API call
 
 ```bash
-: "${SAUCE_USERNAME:?SAUCE_USERNAME is not set}"
-: "${SAUCE_ACCESS_KEY:?SAUCE_ACCESS_KEY is not set}"
-: "${SAUCE_REGION:?SAUCE_REGION is not set}"
+# Source .env if present
+[ -f .env ] && export $(grep -v '^#' .env | xargs)
+
+# Verify all three are now set
+MISSING=""
+[ -z "$SAUCE_USERNAME" ]   && MISSING="$MISSING SAUCE_USERNAME"
+[ -z "$SAUCE_ACCESS_KEY" ] && MISSING="$MISSING SAUCE_ACCESS_KEY"
+[ -z "$SAUCE_REGION" ]     && MISSING="$MISSING SAUCE_REGION"
+
+if [ -n "$MISSING" ]; then
+  echo "Missing required environment variables:$MISSING"
+  echo ""
+  echo "Add them to a .env file in the project root:"
+  echo "  SAUCE_USERNAME=your_username"
+  echo "  SAUCE_ACCESS_KEY=your_access_key"
+  echo "  SAUCE_REGION=eu-central-1"
+  exit 1
+fi
+
 BASE_URL="https://api.${SAUCE_REGION}.saucelabs.com"
 ```
 
-If any variable is missing, stop and tell the user:
-> "Please export the missing variable(s) and try again:
-> `export SAUCE_USERNAME=...`
-> `export SAUCE_ACCESS_KEY=...`
-> `export SAUCE_REGION=us-west-1   # or eu-central-1`"
-
-Do not ask the user to paste credentials into the chat. Do not proceed without all three variables set.
+**If any variable is missing: print the message above and stop. Do not show a dialog. Do not prompt the user for input. Do not ask for credentials in the chat.**
 
 ### Authentication
 
