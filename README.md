@@ -89,16 +89,28 @@ This example shows how to phrase the same test intent for each path.
 
 **Using Sauce Labs AI (no code, runs in the platform):**
 ```
-Using Sauce AI, generate a test that goes to https://www.saucedemo.com, logs in with
-standard_user / secret_sauce, adds an item to the cart, and checks out.
-Run it on Chrome on Windows 11 and give me the results link.
+Using Sauce AI, generate a test that goes to https://fill.dev/form/credit-card-simple and complete the credit card flow adding following test data:
+Name on Card: James Bond
+Type: Visa
+Credit Card Number: 4111111111111111
+CVV: 123
+Expiry Month: 01
+Expiry Year: 2028
+Click on Pay and marked as Passed after viewing the Form Submit Results
+Run it on Firefox latest on Windows 11 and give me the results link.
 ```
 
 **Using Claude Code / Copilot / any agent (writes test code into your repo):**
 ```
-Write a WebdriverIO test that goes to https://www.saucedemo.com, logs in with
-standard_user / secret_sauce, adds an item to the cart, and checks out.
-Run it on Sauce Labs on Chrome on Windows 11.
+Write a WebdriverIO test that goes to https://fill.dev/form/credit-card-simple and complete the credit card flow adding following test data:
+Name on Card: James Bond
+Type: Visa
+Credit Card Number: 4111111111111111
+CVV: 123
+Expiry Month: 01
+Expiry Year: 2028
+Click on Pay and marked as Passed after viewing the Form Submit Results
+Run it on Firefox latest on Windows 11 and give me the results link.
 ```
 
 The key difference: **"Using Sauce AI"** tells the agent to call the Sauce Authoring API. **"Write a WebdriverIO test"** tells it to produce code in your framework.
