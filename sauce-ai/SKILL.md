@@ -210,17 +210,25 @@ echo "testCaseId: $TEST_CASE_ID"
 ### Step 3 — Run the test case
 
 ```bash
-TEST_URL=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+RUN_RESPONSE=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
   -X POST "$BASE_URL/v1/ai-authoring/testcases/$TEST_CASE_ID/run" \
   -H "Content-Type: application/json" \
   -d '{
     "buildName": "Optional build identifier",
     "targets": [{ "capabilities": { /* same capabilities as step 1 */ } }]
-  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['testUrl'])")
-echo "Results: $TEST_URL"
+  }')
+
+# The API's testUrl field returns the app URL under test, not the Sauce Labs dashboard.
+# Derive the results link from jobs[0].id instead.
+JOB_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['jobs'][0]['id'])")
+RESULTS_URL="https://app.${SAUCE_REGION}.saucelabs.com/tests/${JOB_ID}"
+echo "Results: $RESULTS_URL"
 ```
 
-Always print the `testUrl` to the user — it links directly to the Sauce Labs results dashboard.
+**Important:** `data.testUrl` in the run response is the URL of the application being tested — not the Sauce Labs dashboard link. Always derive the results URL as:
+```
+https://app.{SAUCE_REGION}.saucelabs.com/tests/{jobs[0].id}
+```
 
 **Full request body reference**:
 ```json
@@ -242,8 +250,8 @@ Always print the `testUrl` to the user — it links directly to the Sauce Labs r
     "id": "<run-id>",
     "build": "<build-name>",
     "testCaseId": "<test-case-id>",
-    "testUrl": "https://app.saucelabs.com/...",
-    "jobs": [ { /* job objects */ } ],
+    "testUrl": "<app-url-under-test — NOT the results link>",
+    "jobs": [{ "id": "<job-id>", "name": "<test-name>", "target": {} }],
     "creationDate": "<iso8601>",
     "orgId": "<org-id>",
     "teamId": "<team-id>",
@@ -251,8 +259,6 @@ Always print the `testUrl` to the user — it links directly to the Sauce Labs r
   }
 }
 ```
-
-Always return `testUrl` to the user — it links directly to the Sauce Labs results dashboard.
 
 ---
 
