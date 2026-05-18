@@ -142,7 +142,12 @@ using Sauce RDC.
 
 - Say **"using Sauce AI"** or **"write a [framework] test"** to avoid a clarifying question.
 - The more specific your intent description, the better the Sauce AI-generated test. Include expected outcomes, not just actions (e.g. "verify the order confirmation page shows" not just "check out").
-- Always set `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` as environment variables before asking the agent to call any Sauce Labs API.
+- Always set `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY`, and `SAUCE_REGION` as environment variables before asking the agent to call any Sauce Labs API. The agent will stop and ask you to export them rather than proceeding without credentials.
+  ```bash
+  export SAUCE_USERNAME=your_username
+  export SAUCE_ACCESS_KEY=your_access_key
+  export SAUCE_REGION=us-west-1   # or eu-central-1
+  ```
 - For tests behind a firewall or on localhost, add "use Sauce Connect tunnel my-tunnel-name" to your prompt.
 - If Sauce AI generation fails, try simplifying the intent or splitting it into smaller test cases.
 
