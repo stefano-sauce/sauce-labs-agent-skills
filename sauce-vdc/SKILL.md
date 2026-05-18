@@ -172,3 +172,91 @@ sauce:options:
 - Need Chrome DevTools Protocol: set `devTools: true` and disable `extendedDebugging`.
 - Need Sauce performance capture: set both `extendedDebugging: true` and `capturePerformance: true`.
 - Need secure logs: use `logFilters` and `filterSendKeys`.
+
+---
+
+## WebdriverIO Setup for Sauce Labs
+
+### Minimal `wdio.conf.js`
+
+Always read credentials and region from environment variables. Pass `region` explicitly to `sauce-service` — without it the service defaults to US West and `updateJob` calls will 404 on EU accounts.
+
+```javascript
+exports.config = {
+    user: process.env.SAUCE_USERNAME,
+    key: process.env.SAUCE_ACCESS_KEY,
+    hostname: `ondemand.${process.env.SAUCE_REGION}.saucelabs.com`,
+    port: 443,
+    path: '/wd/hub',
+    runner: 'local',
+    specs: ['./test/**/*.test.js'],
+    capabilities: [{
+        browserName: 'chrome',        // or firefox, safari, MicrosoftEdge
+        browserVersion: 'latest',
+        platformName: 'Windows 11',
+        'sauce:options': {
+            build: 'my-build-name',
+            name: 'My Test Name',
+        }
+    }],
+    services: [['sauce', {
+        region: process.env.SAUCE_REGION,
+    }]],
+    framework: 'mocha',
+    reporters: ['spec'],
+    mochaOpts: { timeout: 60000 }
+};
+```
+
+### Required environment variables
+
+```bash
+export SAUCE_USERNAME=your_username
+export SAUCE_ACCESS_KEY=your_access_key
+export SAUCE_REGION=eu-central-1    # or us-west-1
+```
+
+### Results URL
+
+The WDIO session ID equals the Sauce Labs VDC job ID. The `@wdio/sauce-service` spec reporter prints the direct results link at the end of the run:
+
+```
+Check out job at https://app.{SAUCE_REGION}.saucelabs.com/tests/{sessionId}?auth=...
+```
+
+Parse it from the output or construct it as:
+```
+https://app.{SAUCE_REGION}.saucelabs.com/tests/{browser.sessionId}
+```
+
+### Known issue — `updateJob` 404 with BiDi sessions (WDIO v9)
+
+WDIO v9 enables WebDriver BiDi by default. The `@wdio/sauce-service` attempts to mark the job Passed/Failed via the legacy REST API (`PUT /rest/v1/{user}/jobs/{sessionId}`) but BiDi session IDs are not recognised by that endpoint, causing a 404. The test result in the WDIO runner output is still correct — only the Sauce Labs UI status badge is affected.
+
+To suppress the error and mark jobs via the REST API manually, add an `afterTest` hook:
+
+```javascript
+afterTest: async function(test, context, { passed }) {
+    const { default: SauceLabs } = await import('saucelabs');
+    const api = new SauceLabs({
+        user: process.env.SAUCE_USERNAME,
+        key: process.env.SAUCE_ACCESS_KEY,
+        region: process.env.SAUCE_REGION,
+    });
+    try {
+        await api.updateJob(process.env.SAUCE_USERNAME, browser.sessionId, { passed });
+    } catch (_) { /* BiDi sessions may not support this — ignore */ }
+},
+```
+
+### Assertions after form submission
+
+When a form submits and navigates to a results page, assert on URL change rather than specific heading selectors — result page structure varies across sites:
+
+```javascript
+await $('button[type="submit"]').click();
+await browser.waitUntil(
+    async () => (await browser.getUrl()).includes('/submit'),
+    { timeout: 15000, timeoutMsg: 'Expected navigation to the submit results page' }
+);
+```
