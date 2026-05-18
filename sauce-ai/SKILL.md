@@ -218,22 +218,43 @@ RUN_RESPONSE=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
     "targets": [{ "capabilities": { /* same capabilities as step 1 */ } }]
   }')
 
-# data.testUrl = the app URL under test (not the dashboard)
-# jobs[0].url  = null for AI authoring jobs
-# Use data.id (run ID) to build the correct dashboard link
-RUN_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
-APP_HOST="app.${SAUCE_REGION}.saucelabs.com"
-echo "Test case: https://${APP_HOST}/ai-testing/test-cases/${TEST_CASE_ID}"
-echo "This run:  https://${APP_HOST}/ai-testing/runs/${RUN_ID}"
+JOB_NAME=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['jobs'][0]['name'])")
+SUCCESS=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['jobs'][0]['success'])")
+echo "Job name: $JOB_NAME — passed: $SUCCESS"
 ```
 
-**Important — results URL notes:**
-- `data.testUrl` is the URL of the application under test — not a dashboard link.
-- `data.jobs[0].url` is `null` for AI authoring jobs — do not use it.
-- Use `data.id` (run ID) to build the dashboard link:
-  - Specific run: `https://app.{SAUCE_REGION}.saucelabs.com/ai-testing/runs/{data.id}`
-  - All runs for this test case: `https://app.{SAUCE_REGION}.saucelabs.com/ai-testing/test-cases/{TEST_CASE_ID}`
-- Pass status is available immediately in the response as `data.jobs[0].success` (boolean) — report it to the user without waiting for the dashboard.
+---
+
+### Step 4 — Resolve the dashboard results URL
+
+The AI authoring API returns its own internal job IDs — these do **not** match the Sauce Labs VDC job IDs used in dashboard URLs. Always do a follow-up lookup against the jobs REST API to get the correct ID.
+
+```bash
+# Wait briefly for the job to be indexed, then fetch by name
+sleep 3
+VDC_JOB_ID=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+  "$BASE_URL/rest/v1/$SAUCE_USERNAME/jobs?limit=5&full=true" \
+  | python3 -c "
+import sys, json
+jobs = json.load(sys.stdin)
+name = '$JOB_NAME'
+match = next((j for j in jobs if j.get('name') == name), None)
+print(match['id'] if match else '')
+")
+
+if [ -n "$VDC_JOB_ID" ]; then
+  echo "Results: https://app.${SAUCE_REGION}.saucelabs.com/tests/${VDC_JOB_ID}"
+else
+  echo "Job not yet indexed — check https://app.${SAUCE_REGION}.saucelabs.com/jobs"
+fi
+```
+
+**Key notes on results URLs:**
+- `data.testUrl` in the run response = the app URL under test — ignore it.
+- `data.jobs[0].url` = `null` for AI authoring runs — do not use it.
+- `data.jobs[0].success` = boolean pass/fail — report this immediately to the user.
+- The correct dashboard URL format is: `https://app.{SAUCE_REGION}.saucelabs.com/tests/{vdc_job_id}`
+  where `vdc_job_id` comes from `GET /rest/v1/{username}/jobs`, matched by job name.
 
 **Full request body reference**:
 ```json
