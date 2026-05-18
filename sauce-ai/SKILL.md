@@ -218,17 +218,22 @@ RUN_RESPONSE=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
     "targets": [{ "capabilities": { /* same capabilities as step 1 */ } }]
   }')
 
-# The API's testUrl field returns the app URL under test, not the Sauce Labs dashboard.
-# Derive the results link from jobs[0].id instead.
-JOB_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['jobs'][0]['id'])")
-RESULTS_URL="https://app.${SAUCE_REGION}.saucelabs.com/tests/${JOB_ID}"
-echo "Results: $RESULTS_URL"
+# data.testUrl = the app URL under test (not the dashboard)
+# jobs[0].url  = null for AI authoring jobs
+# Use data.id (run ID) to build the correct dashboard link
+RUN_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+APP_HOST="app.${SAUCE_REGION}.saucelabs.com"
+echo "Test case: https://${APP_HOST}/ai-testing/test-cases/${TEST_CASE_ID}"
+echo "This run:  https://${APP_HOST}/ai-testing/runs/${RUN_ID}"
 ```
 
-**Important:** `data.testUrl` in the run response is the URL of the application being tested — not the Sauce Labs dashboard link. Always derive the results URL as:
-```
-https://app.{SAUCE_REGION}.saucelabs.com/tests/{jobs[0].id}
-```
+**Important — results URL notes:**
+- `data.testUrl` is the URL of the application under test — not a dashboard link.
+- `data.jobs[0].url` is `null` for AI authoring jobs — do not use it.
+- Use `data.id` (run ID) to build the dashboard link:
+  - Specific run: `https://app.{SAUCE_REGION}.saucelabs.com/ai-testing/runs/{data.id}`
+  - All runs for this test case: `https://app.{SAUCE_REGION}.saucelabs.com/ai-testing/test-cases/{TEST_CASE_ID}`
+- Pass status is available immediately in the response as `data.jobs[0].success` (boolean) — report it to the user without waiting for the dashboard.
 
 **Full request body reference**:
 ```json
