@@ -1,8 +1,30 @@
 # Sauce Labs Agent Skills
 
-This repository provides example Agent Skills that you can use with common AI coding agents.
+This repository provides Agent Skills for common AI coding agents (Claude Code, GitHub Copilot, and others). Each skill is a reusable instruction pack that tells your agent how to perform a Sauce Labs workflow consistently.
 
-If you are new to agents, think of a skill as a reusable instruction pack that helps your agent perform a task consistently.
+## Skills in this repository
+
+| Skill | Purpose |
+|---|---|
+| [`sauce-vdc`](sauce-vdc/SKILL.md) | Generate W3C capabilities for desktop browsers and virtual mobile devices (emulators/simulators). Includes a working [WebdriverIO example](sauce-vdc/examples/wdio-credit-card/). |
+| [`sauce-rdc`](sauce-rdc/SKILL.md) | Generate W3C/Appium capabilities for real mobile devices on Sauce Labs RDC. |
+| [`sauce-ai`](sauce-ai/SKILL.md) | Route between agent-written test code and the Sauce Labs AI Authoring API. Agents use this skill to decide how to run a test based on your prompt. |
+
+## Two ways to run tests on Sauce Labs
+
+These skills support two distinct flows. **Say which one you want** — the agent will route correctly and skip the clarifying question.
+
+### 1. Agent-driven — agent writes test code, you own it
+
+The agent writes test files (WebdriverIO, pytest, Appium, etc.) and uses `sauce-vdc` or `sauce-rdc` to produce the right capabilities. Tests live in your repo and run via CI.
+
+**Trigger phrase:** `"Write a [framework] test that..."` or name a framework explicitly.
+
+### 2. Sauce AI — no code, test runs in the platform
+
+The agent calls the Sauce Labs AI Authoring API with your intent in plain language. A test is generated and run automatically. Nothing is written to your repo. Results are available in the Sauce Labs dashboard.
+
+**Trigger phrase:** `"Using Sauce AI, generate a test that..."`
 
 ## What this repository is for
 
@@ -138,6 +160,8 @@ Update my existing WebdriverIO capabilities to also run on iOS Safari on a real 
 using Sauce RDC.
 ```
 
+A fully working WebdriverIO example (credit card form on Sauce Labs VDC) is available in [`sauce-vdc/examples/wdio-credit-card/`](sauce-vdc/examples/wdio-credit-card/).
+
 ### Tips for best results
 
 - Say **"using Sauce AI"** or **"write a [framework] test"** to avoid a clarifying question.
@@ -156,8 +180,8 @@ using Sauce RDC.
 
 These skills have been tested with:
 
-- Microsoft Visual Studio Code with GitHub Copilot Pro
-- Google Antigravity with Gemini 3.1 Pro
+- Claude Code (CLI and VS Code extension)
+- Microsoft Visual Studio Code with GitHub Copilot
 
 ## Notes
 

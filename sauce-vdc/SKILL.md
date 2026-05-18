@@ -194,6 +194,7 @@ exports.config = {
         browserName: 'chrome',        // or firefox, safari, MicrosoftEdge
         browserVersion: 'latest',
         platformName: 'Windows 11',
+        'wdio:enforceWebDriverClassic': true,
         'sauce:options': {
             build: 'my-build-name',
             name: 'My Test Name',
