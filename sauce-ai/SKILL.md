@@ -59,20 +59,49 @@ The user's prompt includes one or more of:
 
 ---
 
-## Authentication
+## Environment Variables
 
-All Sauce Authoring API requests use **HTTP Basic Auth**.
+All Sauce Authoring API calls depend on three environment variables. Read them before doing anything else.
 
+| Variable | Required | Description |
+|---|---|---|
+| `SAUCE_USERNAME` | Yes | Sauce Labs username |
+| `SAUCE_ACCESS_KEY` | Yes | Sauce Labs access key |
+| `SAUCE_REGION` | Yes | Region identifier — determines the base URL |
+
+### Region → Base URL mapping
+
+| `SAUCE_REGION` value | Base URL |
+|---|---|
+| `us-west-1` | `https://api.us-west-1.saucelabs.com` |
+| `eu-central-1` | `https://api.eu-central-1.saucelabs.com` |
+
+Always derive the base URL from `$SAUCE_REGION`. Never hardcode a region.
+
+### Pre-flight check — run this before any API call
+
+```bash
+: "${SAUCE_USERNAME:?SAUCE_USERNAME is not set}"
+: "${SAUCE_ACCESS_KEY:?SAUCE_ACCESS_KEY is not set}"
+: "${SAUCE_REGION:?SAUCE_REGION is not set}"
+BASE_URL="https://api.${SAUCE_REGION}.saucelabs.com"
 ```
-Username: $SAUCE_USERNAME
-Password: $SAUCE_ACCESS_KEY
+
+If any variable is missing, stop and tell the user:
+> "Please export the missing variable(s) and try again:
+> `export SAUCE_USERNAME=...`
+> `export SAUCE_ACCESS_KEY=...`
+> `export SAUCE_REGION=us-west-1   # or eu-central-1`"
+
+Do not ask the user to paste credentials into the chat. Do not proceed without all three variables set.
+
+### Authentication
+
+All requests use **HTTP Basic Auth**: `$SAUCE_USERNAME` as the username, `$SAUCE_ACCESS_KEY` as the password.
+
+```bash
+curl -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" ...
 ```
-
-**Base URLs**:
-- US West 1: `https://api.us-west-1.saucelabs.com`
-- EU Central 1: `https://api.eu-central-1.saucelabs.com`
-
-Never hardcode credentials. Always read from environment variables.
 
 ---
 
@@ -82,28 +111,25 @@ This is the primary agentic flow when using the Sauce Authoring API path.
 
 ### Step 1 — Generate a test case (async)
 
-```
-POST /v1/ai-authoring/testcases/generate
-```
-
-**Request body**:
-```json
-{
-  "name": "Human-readable test name (1–255 chars)",
-  "testSuiteId": "<suite-uuid> (optional)",
-  "runSettings": {
-    "target": {
-      "capabilities": { /* W3C WebDriver capabilities — see sauce-rdc or sauce-vdc skill */ }
+```bash
+TASK_ID=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+  -X POST "$BASE_URL/v1/ai-authoring/testcases/generate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Human-readable test name (1–255 chars)",
+    "runSettings": {
+      "target": {
+        "capabilities": { /* W3C capabilities — see sauce-rdc or sauce-vdc skill */ }
+      },
+      "testUrl": "https://example.com"
     },
-    "testUrl": "https://example.com",
-    "scTunnelName": "<tunnel-name> (optional)"
-  },
-  "promptSettings": {
-    "intent": "Natural-language description of what the test should do",
-    "maxSteps": 50
-  },
-  "timeout": 300000
-}
+    "promptSettings": {
+      "intent": "Natural-language description of what the test should do",
+      "maxSteps": 50
+    },
+    "timeout": 300000
+  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['taskId'])")
+echo "taskId: $TASK_ID"
 ```
 
 **Key constraints**:
@@ -113,46 +139,46 @@ POST /v1/ai-authoring/testcases/generate
 - `maxSteps`: default 50, max 200.
 - Returns `data.taskId` (UUID) — **generation is async**.
 
-**Response** (`202 Accepted`):
-```json
-{ "data": { "taskId": "<uuid>" } }
-```
-
 ---
 
 ### Step 2 — Poll for generation status
 
+```bash
+until [ "$STATUS" = "COMPLETED" ] || [ "$STATUS" = "FAILED" ]; do
+  sleep 5
+  RESPONSE=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+    "$BASE_URL/v1/ai-authoring/testcases/generate/$TASK_ID")
+  STATUS=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")
+  echo "status: $STATUS"
+done
+TEST_CASE_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['data'].get('testCaseId',''))")
+echo "testCaseId: $TEST_CASE_ID"
 ```
-GET /v1/ai-authoring/testcases/generate/{taskId}
-```
-
-Poll until `status` is `COMPLETED` or `FAILED`. Typical interval: 5–10 seconds.
 
 **Response statuses**:
 - `QUEUED` — not yet started
 - `IN_PROGRESS` — generation running
 - `COMPLETED` — includes `testCaseId` for next step
-- `FAILED` — includes `error` message
-
-**Response** (`200 OK`):
-```json
-{
-  "data": {
-    "status": "COMPLETED",
-    "testCaseId": "<24-char-hex-id>"
-  }
-}
-```
+- `FAILED` — includes `error` message; surface it to the user and stop
 
 ---
 
 ### Step 3 — Run the test case
 
-```
-POST /v1/ai-authoring/testcases/{id}/run
+```bash
+TEST_URL=$(curl -s -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+  -X POST "$BASE_URL/v1/ai-authoring/testcases/$TEST_CASE_ID/run" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "buildName": "Optional build identifier",
+    "targets": [{ "capabilities": { /* same capabilities as step 1 */ } }]
+  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['testUrl'])")
+echo "Results: $TEST_URL"
 ```
 
-**Request body**:
+Always print the `testUrl` to the user — it links directly to the Sauce Labs results dashboard.
+
+**Full request body reference**:
 ```json
 {
   "buildName": "Optional build identifier",
@@ -190,25 +216,25 @@ Always return `testUrl` to the user — it links directly to the Sauce Labs resu
 
 ### List test cases
 ```
-GET /v1/ai-authoring/testcases
+GET $BASE_URL/v1/ai-authoring/testcases
 ```
 Query params: `search`, `startDate`, `endDate`, `userId`, `teamId`, `testSuiteId[]`, `skip`, `limit`
 
 ### Get a test case
 ```
-GET /v1/ai-authoring/testcases/{id}
+GET $BASE_URL/v1/ai-authoring/testcases/{id}
 ```
 `id`: 24-character hex string.
 
 ### Rename a test case
 ```
-POST /v1/ai-authoring/testcases/{id}/rename
+POST $BASE_URL/v1/ai-authoring/testcases/{id}/rename
 ```
 Body: `{ "name": "New name" }`
 
 ### Delete a test case
 ```
-DELETE /v1/ai-authoring/testcases/{id}
+DELETE $BASE_URL/v1/ai-authoring/testcases/{id}
 ```
 Returns `204 No Content` on success.
 
@@ -218,13 +244,13 @@ Returns `204 No Content` on success.
 
 ### List suites
 ```
-GET /v1/ai-authoring/testsuites
+GET $BASE_URL/v1/ai-authoring/testsuites
 ```
 Query params: `ids[]`, `search`, `startDate`, `endDate`, `userId`, `teamId`, `skip`, `limit`
 
 ### Create a suite
 ```
-POST /v1/ai-authoring/testsuites
+POST $BASE_URL/v1/ai-authoring/testsuites
 ```
 Body:
 ```json
@@ -236,24 +262,24 @@ Body:
 
 ### Get a suite
 ```
-GET /v1/ai-authoring/testsuites/{id}
+GET $BASE_URL/v1/ai-authoring/testsuites/{id}
 ```
 
 ### Update a suite
 ```
-POST /v1/ai-authoring/testsuites/{id}
+POST $BASE_URL/v1/ai-authoring/testsuites/{id}
 ```
 Body: `{ "name": "...", "testCaseIds": ["..."] }`
 
 ### Delete a suite
 ```
-DELETE /v1/ai-authoring/testsuites/{id}
+DELETE $BASE_URL/v1/ai-authoring/testsuites/{id}
 ```
 Body: `{ "deleteTestCases": true }` — set to `true` to cascade-delete all test cases in the suite.
 
 ### Run all test cases in a suite
 ```
-POST /v1/ai-authoring/testsuites/{id}/run
+POST $BASE_URL/v1/ai-authoring/testsuites/{id}/run
 ```
 Body: `{ "buildName": "Optional build name" }`
 
@@ -267,13 +293,13 @@ Schedules run suites automatically on a cron expression.
 
 ### List schedules
 ```
-GET /v1/ai-authoring/test-schedules
+GET $BASE_URL/v1/ai-authoring/test-schedules
 ```
 Query params: `ids[]`, `search`, `startDate`, `endDate`, `userId`, `teamId`, `testSuiteIds[]`, `skip`, `limit`
 
 ### Create a schedule
 ```
-POST /v1/ai-authoring/test-schedules
+POST $BASE_URL/v1/ai-authoring/test-schedules
 ```
 Body:
 ```json
@@ -296,18 +322,18 @@ Body:
 
 ### Get a schedule
 ```
-GET /v1/ai-authoring/test-schedules/{id}
+GET $BASE_URL/v1/ai-authoring/test-schedules/{id}
 ```
 
 ### Update a schedule
 ```
-POST /v1/ai-authoring/test-schedules/{id}
+POST $BASE_URL/v1/ai-authoring/test-schedules/{id}
 ```
 Body: same shape as create; any field can be updated. Pass `null` to clear optional fields (`startDate`, `endDate`, `maxRuns`, `scTunnelName`, `buildName`).
 
 ### Delete a schedule
 ```
-DELETE /v1/ai-authoring/test-schedules/{id}
+DELETE $BASE_URL/v1/ai-authoring/test-schedules/{id}
 ```
 Returns `204 No Content`.
 
@@ -317,7 +343,7 @@ Returns `204 No Content`.
 
 ### Download a stored artifact (e.g. screenshot)
 ```
-GET /v1/ai-authoring/storage/{id}
+GET $BASE_URL/v1/ai-authoring/storage/{id}
 ```
 Returns binary stream (`application/octet-stream`). `id` is an artifact UUID.
 
