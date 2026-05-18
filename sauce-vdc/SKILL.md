@@ -229,24 +229,29 @@ Parse it from the output or construct it as:
 https://app.{SAUCE_REGION}.saucelabs.com/tests/{browser.sessionId}
 ```
 
-### Known issue — `updateJob` 404 with BiDi sessions (WDIO v9)
+### Marking jobs Passed/Failed — `updateJob` 404 workaround
 
-WDIO v9 enables WebDriver BiDi by default. The `@wdio/sauce-service` attempts to mark the job Passed/Failed via the legacy REST API (`PUT /rest/v1/{user}/jobs/{sessionId}`) but BiDi session IDs are not recognised by that endpoint, causing a 404. The test result in the WDIO runner output is still correct — only the Sauce Labs UI status badge is affected.
+WDIO v9's `@wdio/sauce-service` calls `PUT /rest/v1/{user}/jobs/{sessionId}` to mark jobs Passed/Failed. This returns 404 for some account types and session configurations. The job stays as "Completed" in the Sauce Labs UI even when the test passes.
 
-To suppress the error and mark jobs via the REST API manually, add an `afterTest` hook:
+**Fix:** add an `afterTest` hook that calls the REST API directly with `curl`. This runs after the sauce-service attempt and correctly sets the status. Confirmed working on EU and US regions.
 
 ```javascript
-afterTest: async function(test, context, { passed }) {
-    const { default: SauceLabs } = await import('saucelabs');
-    const api = new SauceLabs({
-        user: process.env.SAUCE_USERNAME,
-        key: process.env.SAUCE_ACCESS_KEY,
-        region: process.env.SAUCE_REGION,
-    });
+const { execSync } = require('child_process');
+
+// Add this to your wdio.conf.js exports.config:
+afterTest: async function(_test, _ctx, { passed }) {
+    const { SAUCE_USERNAME: user, SAUCE_ACCESS_KEY: key, SAUCE_REGION: region } = process.env;
     try {
-        await api.updateJob(process.env.SAUCE_USERNAME, browser.sessionId, { passed });
-    } catch (_) { /* BiDi sessions may not support this — ignore */ }
-},
+        execSync(
+            `curl -s -u "${user}:${key}" ` +
+            `-X PUT "https://api.${region}.saucelabs.com/rest/v1/${user}/jobs/${browser.sessionId}" ` +
+            `-H "Content-Type: application/json" ` +
+            `-d '{"passed":${passed}}'`
+        );
+    } catch (e) {
+        console.warn('Could not update job status:', e.message);
+    }
+}
 ```
 
 ### Assertions after form submission
