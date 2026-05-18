@@ -450,6 +450,8 @@ Do not generate capabilities inline — delegate to the appropriate skill.
 
 ## Output Conventions
 
-- Always return the Sauce Labs results URL (`testUrl`) after a run so the user can inspect results.
+- Always report `jobs[0].success` (pass/fail) immediately after Step 3 — do not wait for the user to open the dashboard.
+- Always return the resolved dashboard URL from Step 4: `https://app.{SAUCE_REGION}.saucelabs.com/tests/{vdc_job_id}`.
+- Do not return `data.testUrl` from the run response — it is the app URL under test, not the results link.
 - For async generation, show a progress indicator and poll at 5-second intervals.
-- Summarize what was created: test case name, suite (if any), run status, and results link.
+- Summarize: test case name, suite (if any), pass/fail status, and results link.
